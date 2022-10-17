@@ -1,0 +1,11 @@
+Set-Location $PSScriptRoot
+if (Test-Path .\function.zip)
+{
+    Remove-Item .\function.zip
+}
+go build -o check check.go
+Compress-Archive -Path .\check.go -DestinationPath .\function.zip
+Remove-Item .\check
+
+aws s3 cp .\function.zip s3://radswn-lambda-bucket
+aws cloudformation deploy --stack-name lambda-stack --template-file .\lambda.yaml --capabilities CAPABILITY_NAMED_IAM
