@@ -1,0 +1,46 @@
+Resources:
+  LambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AWSLambdaExecute"
+      - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      RoleName: lambda-role
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:*
+            Resource: arn:aws:logs:*:*:**963,
+  InternshipCheckerLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: internship-checker-cf
+      Description: Lambda for checking internships on company career sites
+      Code:
+        S3Bucket: radswn-lambda-bucket
+        S3Key: function.zip
+      Handler: check
+      Runtime: go1.x
+      Role: !GetAtt LambdaFunctionRole.Arn
+Outputs:
+  LambdaRoleARN:
+    Description: Arn for lambda role
+    Value:
+      Fn::GetAtt:
+      - LambdaFunctionRole
+      - Arn
+    Export:
+      Name: lambda-role
