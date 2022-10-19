@@ -3,8 +3,11 @@ if (Test-Path .\function.zip)
 {
     Remove-Item .\function.zip
 }
+$env:GOARCH="amd64"
+$env:GOOS="linux"
 go build -o check check.go
-Compress-Archive -Path .\check.go -DestinationPath .\function.zip
+
+Compress-Archive -Path .\check -DestinationPath .\function.zip
 Remove-Item .\check
 
 aws s3 cp .\function.zip s3://radswn-lambda-bucket
