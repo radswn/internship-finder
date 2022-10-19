@@ -29,7 +29,7 @@ func HandleLambdaEvent(event MyEvent) (MyResponse, error) {
 		offers = append(offers, offer)
 	})
 
-	c.Visit("https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN")
+	c.Visit(event.Site)
 	return MyResponse{Offers: offers}, nil
 }
 
