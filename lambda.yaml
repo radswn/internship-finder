@@ -1,3 +1,7 @@
+Parameters:
+  LambdaCodeVersion:
+    Type: String
+    Description: Version of code used in the lambda.
 Resources:
   LambdaFunctionRole:
     Type: AWS::IAM::Role
@@ -32,6 +36,7 @@ Resources:
       Code:
         S3Bucket: radswn-lambda-bucket
         S3Key: function.zip
+        S3ObjectVersion: !Ref LambdaCodeVersion
       Handler: check
       Runtime: go1.x
       Role: !GetAtt LambdaFunctionRole.Arn

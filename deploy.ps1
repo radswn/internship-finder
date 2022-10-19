@@ -11,4 +11,6 @@ Compress-Archive -Path .\check -DestinationPath .\function.zip
 Remove-Item .\check
 
 aws s3 cp .\function.zip s3://radswn-lambda-bucket
-aws cloudformation deploy --stack-name lambda-stack --template-file .\lambda.yaml --capabilities CAPABILITY_NAMED_IAM
+$FileVersion = (aws s3api list-object-versions --bucket radswn-lambda-bucket| ConvertFrom-Json).Versions[0].VersionId
+
+aws cloudformation deploy --stack-name lambda-stack --template-file .\lambda.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides LambdaCodeVersion=$FileVersion
