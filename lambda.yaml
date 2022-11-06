@@ -38,6 +38,7 @@ Resources:
         S3Key: function.zip
         S3ObjectVersion: !Ref LambdaCodeVersion
       Handler: check
+      Timeout: 10
       Runtime: go1.x
       Role: !GetAtt LambdaFunctionRole.Arn
 Outputs:
