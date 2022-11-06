@@ -33,6 +33,14 @@ func TestNonEmptyTitles(t *testing.T) {
 	}
 }
 
+func TestNonEmptyLocation(t *testing.T) {
+	for i, o := range offers {
+		if o.Location == "" {
+			t.Fatalf(`Offer number %d got an empty location`, i)
+		}
+	}
+}
+
 func TestValidLinks(t *testing.T) {
 	for i, o := range offers {
 		u, err := url.ParseRequestURI(o.Link)

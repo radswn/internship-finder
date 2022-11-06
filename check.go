@@ -15,8 +15,9 @@ type Response struct {
 }
 
 type Offer struct {
-	Title string `json:"title"`
-	Link  string `json:"link"`
+	Title    string `json:"title"`
+	Link     string `json:"link"`
+	Location string `json:"location"`
 }
 
 func HandleLambdaEvent(event Event) (Response, error) {
@@ -29,11 +30,14 @@ func HandleLambdaEvent(event Event) (Response, error) {
 	c.OnHTML("td.table-col-1", func(e *colly.HTMLElement) {
 		title := e.ChildText("a")
 		link := constructLink(event.Site, e.ChildAttr("a", "href"))
+		location := e.DOM.SiblingsFiltered("td.table-col-2").Text()
 
 		offer := Offer{
-			Title: title,
-			Link:  link,
+			Title:    title,
+			Link:     link,
+			Location: location,
 		}
+
 		offers = append(offers, offer)
 	})
 
