@@ -5,11 +5,11 @@ import (
 	"github.com/gocolly/colly"
 )
 
-type MyEvent struct {
+type Event struct {
 	Site string `json:"site"`
 }
 
-type MyResponse struct {
+type Response struct {
 	Offers []Offer `json:"offers"`
 }
 
@@ -17,7 +17,7 @@ type Offer struct {
 	Title string `json:"title"`
 }
 
-func HandleLambdaEvent(event MyEvent) (MyResponse, error) {
+func HandleLambdaEvent(event Event) (Response, error) {
 	c := colly.NewCollector(
 		colly.AllowedDomains("jobs.apple.com"),
 		colly.AllowURLRevisit())
@@ -29,8 +29,8 @@ func HandleLambdaEvent(event MyEvent) (MyResponse, error) {
 		offers = append(offers, offer)
 	})
 
-	c.Visit(event.Site)
-	return MyResponse{Offers: offers}, nil
+	err := c.Visit(event.Site)
+	return Response{Offers: offers}, err
 }
 
 func main() {
