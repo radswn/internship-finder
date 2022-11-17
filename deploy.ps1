@@ -29,4 +29,4 @@ Remove-Item .\function.zip
 
 Timestamp-Log("stack update")
 $FileVersion = (aws s3api list-object-versions --bucket radswn-lambda-bucket| ConvertFrom-Json).Versions[0].VersionId
-aws cloudformation deploy --stack-name lambda-stack --template-file .\lambda.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides LambdaCodeVersion = $FileVersion
+aws cloudformation deploy --stack-name lambda-stack --template-file .\infra.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides LambdaCodeVersion = $FileVersion
