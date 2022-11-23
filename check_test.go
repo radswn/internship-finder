@@ -19,12 +19,6 @@ func TestConnection(t *testing.T) {
 	offers = resp.Offers
 }
 
-func TestNonEmptyArray(t *testing.T) {
-	if len(offers) == 0 {
-		t.Fatalf(`Expected a non-empty array, received an empty one`)
-	}
-}
-
 func TestNonEmptyTitles(t *testing.T) {
 	for i, o := range offers {
 		if o.Title == "" {

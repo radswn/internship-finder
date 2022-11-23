@@ -3,7 +3,9 @@ package main
 import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/gocolly/colly"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Event struct {
@@ -20,14 +22,25 @@ type Offer struct {
 	Location string `json:"location"`
 }
 
+func isOfferFromToday(offerDate string) bool {
+	current := time.Now()
+
+	currentDay := strconv.Itoa(current.Day())
+	currentMonthShort := current.Month().String()[:3]
+
+	return strings.Contains(offerDate, currentMonthShort+" "+currentDay)
+}
+
 func HandleLambdaEvent(event Event) (Response, error) {
-	c := colly.NewCollector(
-		colly.AllowedDomains("jobs.apple.com"),
-		colly.AllowURLRevisit())
+	c := colly.NewCollector(colly.AllowedDomains("jobs.apple.com"))
 
 	offers := make([]Offer, 0)
 
 	c.OnHTML("td.table-col-1", func(e *colly.HTMLElement) {
+		if !isOfferFromToday(e.ChildText("span.table--advanced-search__date")) {
+			return
+		}
+
 		title := e.ChildText("a")
 		link := constructLink(event.Site, e.ChildAttr("a", "href"))
 		location := e.DOM.SiblingsFiltered("td.table-col-2").Text()
