@@ -33,6 +33,14 @@ func TestNonEmptyTitles(t *testing.T) {
 	}
 }
 
+func TestNonEmptyIds(t *testing.T) {
+	for i, o := range offers {
+		if o.Id == "" {
+			t.Fatalf(`Offer number %d got an empty id`, i)
+		}
+	}
+}
+
 func TestNonEmptyLocation(t *testing.T) {
 	for i, o := range offers {
 		if o.Location == "" {
