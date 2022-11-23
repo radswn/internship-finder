@@ -1,4 +1,3 @@
-AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   LambdaCodeVersion:
     Type: String
@@ -30,8 +29,9 @@ Resources:
             - logs:*
             Resource: arn:aws:logs:*:*:**963,
   InternshipCheckerLambda:
-    Type: AWS::Lambda::Function
+    Type: 'AWS::Lambda::Function'
     Properties:
+      FunctionName: internship-checker-cf
       Description: Lambda for checking internships on company career sites
       Code:
         S3Bucket: radswn-lambda-bucket
@@ -41,21 +41,6 @@ Resources:
       Timeout: 10
       Runtime: go1.x
       Role: !GetAtt LambdaFunctionRole.Arn
-  InternshipTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        -
-          AttributeName: "Id"
-          AttributeType: "S"
-      KeySchema:
-        -
-          AttributeName: "Id"
-          KeyType: "HASH"
-      BillingMode: "PROVISIONED"
-      ProvisionedThroughput:
-        ReadCapacityUnits: 50
-        WriteCapacityUnits: 5
 Outputs:
   LambdaRoleARN:
     Description: Arn for lambda role

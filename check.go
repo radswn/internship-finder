@@ -15,7 +15,6 @@ type Response struct {
 }
 
 type Offer struct {
-	Id       string `json:"id"`
 	Title    string `json:"title"`
 	Link     string `json:"link"`
 	Location string `json:"location"`
@@ -26,17 +25,14 @@ func HandleLambdaEvent(event Event) (Response, error) {
 		colly.AllowedDomains("jobs.apple.com"),
 		colly.AllowURLRevisit())
 
-	// TODO split to a separate function
 	offers := make([]Offer, 0)
 
 	c.OnHTML("td.table-col-1", func(e *colly.HTMLElement) {
 		title := e.ChildText("a")
 		link := constructLink(event.Site, e.ChildAttr("a", "href"))
-		id := strings.Split(link, "/")[5] + "-apple"
 		location := e.DOM.SiblingsFiltered("td.table-col-2").Text()
 
 		offer := Offer{
-			Id:       id,
 			Title:    title,
 			Link:     link,
 			Location: location,
@@ -44,7 +40,6 @@ func HandleLambdaEvent(event Event) (Response, error) {
 
 		offers = append(offers, offer)
 	})
-	// end split, return offers
 
 	err := c.Visit(event.Site)
 	return Response{Offers: offers}, err
