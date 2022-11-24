@@ -10,7 +10,7 @@ var offers []Offer
 
 func TestConnection(t *testing.T) {
 	event := Event{site}
-	resp, err := HandleLambdaEvent(event)
+	resp, err := HandleChecker(event)
 
 	if err != nil {
 		t.Fatalf(`Received error %q`, err)

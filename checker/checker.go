@@ -31,7 +31,7 @@ func isOfferFromToday(offerDate string) bool {
 	return strings.Contains(offerDate, currentMonthShort+" "+currentDay)
 }
 
-func HandleLambdaEvent(event Event) (Response, error) {
+func HandleChecker(event Event) (Response, error) {
 	c := colly.NewCollector(colly.AllowedDomains("jobs.apple.com"))
 
 	offers := make([]Offer, 0)
@@ -65,5 +65,5 @@ func constructLink(visitedUrl string, href string) (url string) {
 }
 
 func main() {
-	lambda.Start(HandleLambdaEvent)
+	lambda.Start(HandleChecker)
 }

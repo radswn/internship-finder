@@ -10,6 +10,13 @@ Parameters:
   CheckerLambdaZip:
     Type: String
     Description: Name of .zip with checker lambda code
+  NotifierLambdaCodeVersion:
+    Type: String
+    Description: Version of code used in the notifier lambda
+  NotifierLambdaZip:
+    Type: String
+    Description: Name of .zip with notifier lambda code
+
 Resources:
   CheckerLambdaRole:
     Type: AWS::IAM::Role
@@ -25,7 +32,52 @@ Resources:
           - sts:AssumeRole
       ManagedPolicyArns:
       - "arn:aws:iam::aws:policy/AWSLambdaExecute"
-      - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      Policies:
+        - PolicyName: sqs-send
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:SendMessageBatch
+                Resource: !GetAtt EventQueue.Arn
+        - PolicyName: s3-get
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub
+                  - 'arn:aws:s3:::${BucketName}'
+                  - BucketName: !Ref CodeBucketName
+  NotifierLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSLambdaExecute"
+      Policies:
+        - PolicyName: sqs-get
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt EventQueue.Arn
+
   CheckerLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -38,13 +90,18 @@ Resources:
       Timeout: 15
       Runtime: go1.x
       Role: !GetAtt CheckerLambdaRole.Arn
+  NotifierLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Retrieving events from SQS and sending to the user through Telegram webhook
+      Code:
+        S3Bucket: !Ref CodeBucketName
+        S3Key: !Ref NotifierLambdaZip
+        S3ObjectVersion: !Ref NotifierLambdaCodeVersion
+      Handler: notifier
+      Timeout: 10
+      Runtime: go1.x
+      Role: !GetAtt NotifierLambdaRole.Arn
 
-Outputs:
-  CheckerLambdaRoleARN:
-    Description: Arn for lambda role
-    Value:
-      Fn::GetAtt:
-      - CheckerLambdaRole
-      - Arn
-    Export:
-      Name: lambda-role
+  EventQueue:
+    Type: AWS::SQS::Queue
