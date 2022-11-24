@@ -5,6 +5,11 @@ function Timestamp-Log($Text)
     Write-Host "[$Timestamp] ============== $Text =============="
 }
 
+$BucketName = "radswn-lambda-bucket"
+$CheckerExe = "checker"
+$CheckerLambdaZip = $CheckerExe + ".zip"
+$CheckerSourceCode = $CheckerExe + ".go"
+
 Set-Location $PSScriptRoot
 
 $env:GOOS = "windows"
@@ -19,15 +24,22 @@ if ($LASTEXITCODE -ne 0)
 Timestamp-Log("build")
 $env:GOARCH = "amd64"
 $env:GOOS = "linux"
-go build -o check check.go
+go build -o $CheckerExe $CheckerSourceCode
 
 Timestamp-Log("upload to bucket")
-Compress-Archive -Path .\check -DestinationPath .\function.zip
-Remove-Item .\check
+Compress-Archive -Path .\$CheckerExe -DestinationPath .\$CheckerLambdaZip
+Remove-Item .\$CheckerExe
 
-aws s3 cp .\function.zip s3://radswn-lambda-bucket
-Remove-Item .\function.zip
+aws s3 cp .\$CheckerLambdaZip s3://$BucketName
+Remove-Item .\$CheckerLambdaZip
 
 Timestamp-Log("stack update")
-$FileVersion = (aws s3api list-object-versions --bucket radswn-lambda-bucket| ConvertFrom-Json).Versions[0].VersionId
-aws cloudformation deploy --stack-name lambda-stack --template-file .\infra.yaml --capabilities CAPABILITY_NAMED_IAM --parameter-overrides LambdaCodeVersion=$FileVersion
+$CheckerFileVersion = ((aws s3api list-object-versions --bucket $BucketName | `
+ConvertFrom-Json).Versions | Where-Object -Property Key -EQ $CheckerLambdaZip)[0].VersionId
+
+aws cloudformation deploy --stack-name lambda-stack `
+--template-file .\infra.yaml `
+--capabilities CAPABILITY_NAMED_IAM `
+--parameter-overrides CodeBucketName=$BucketName `
+CheckerLambdaCodeVersion=$CheckerFileVersion `
+CheckerLambdaZip=$CheckerLambdaZip

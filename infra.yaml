@@ -1,9 +1,17 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
 Parameters:
-  LambdaCodeVersion:
+  CodeBucketName:
     Type: String
-    Description: Version of code used in the lambda.
+    Description: The name of the bucket with Lambdas' code
+  CheckerLambdaCodeVersion:
+    Type: String
+    Description: Version of code used in the checker lambda
+  CheckerLambdaZip:
+    Type: String
+    Description: Name of .zip with checker lambda code
 Resources:
-  LambdaFunctionRole:
+  CheckerLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -18,35 +26,25 @@ Resources:
       ManagedPolicyArns:
       - "arn:aws:iam::aws:policy/AWSLambdaExecute"
       - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-      RoleName: lambda-role
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:*
-            Resource: arn:aws:logs:*:*:**963,
-  InternshipCheckerLambda:
-    Type: 'AWS::Lambda::Function'
+  CheckerLambda:
+    Type: AWS::Lambda::Function
     Properties:
-      FunctionName: internship-checker-cf
       Description: Lambda for checking internships on company career sites
       Code:
-        S3Bucket: radswn-lambda-bucket
-        S3Key: function.zip
-        S3ObjectVersion: !Ref LambdaCodeVersion
-      Handler: check
-      Timeout: 10
+        S3Bucket: !Ref CodeBucketName
+        S3Key: !Ref CheckerLambdaZip
+        S3ObjectVersion: !Ref CheckerLambdaCodeVersion
+      Handler: checker
+      Timeout: 15
       Runtime: go1.x
-      Role: !GetAtt LambdaFunctionRole.Arn
+      Role: !GetAtt CheckerLambdaRole.Arn
+
 Outputs:
-  LambdaRoleARN:
+  CheckerLambdaRoleARN:
     Description: Arn for lambda role
     Value:
       Fn::GetAtt:
-      - LambdaFunctionRole
+      - CheckerLambdaRole
       - Arn
     Export:
       Name: lambda-role
