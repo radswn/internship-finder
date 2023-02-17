@@ -24,34 +24,16 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - lambda.amazonaws.com
-          Action:
-          - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
       ManagedPolicyArns:
-      - "arn:aws:iam::aws:policy/AWSLambdaExecute"
-      Policies:
-        - PolicyName: sqs-send
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sqs:SendMessage
-                  - sqs:SendMessageBatch
-                Resource: !GetAtt EventQueue.Arn
-        - PolicyName: s3-get
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                Resource: !Sub
-                  - 'arn:aws:s3:::${BucketName}'
-                  - BucketName: !Ref CodeBucketName
+        - "arn:aws:iam::aws:policy/AWSLambdaExecute"
+        - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
   NotifierLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -66,17 +48,8 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AWSLambdaExecute"
-      Policies:
-        - PolicyName: sqs-get
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                  - sqs:GetQueueAttributes
-                Resource: !GetAtt EventQueue.Arn
+        - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
   CheckerLambda:
     Type: AWS::Lambda::Function
@@ -86,6 +59,9 @@ Resources:
         S3Bucket: !Ref CodeBucketName
         S3Key: !Ref CheckerLambdaZip
         S3ObjectVersion: !Ref CheckerLambdaCodeVersion
+      Environment:
+        Variables:
+          QueueName: !GetAtt EventQueue.QueueName
       Handler: checker
       Timeout: 15
       Runtime: go1.x
