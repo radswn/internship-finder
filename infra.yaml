@@ -63,7 +63,7 @@ Resources:
         Variables:
           QueueName: !GetAtt EventQueue.QueueName
       Handler: checker
-      Timeout: 15
+      Timeout: 10
       Runtime: go1.x
       Role: !GetAtt CheckerLambdaRole.Arn
   NotifierLambda:
@@ -74,6 +74,9 @@ Resources:
         S3Bucket: !Ref CodeBucketName
         S3Key: !Ref NotifierLambdaZip
         S3ObjectVersion: !Ref NotifierLambdaCodeVersion
+      Environment:
+        Variables:
+          QueueName: !GetAtt EventQueue.QueueName
       Handler: notifier
       Timeout: 10
       Runtime: go1.x

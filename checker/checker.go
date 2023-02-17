@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/gocolly/colly"
@@ -20,6 +20,7 @@ type SqsApi struct {
 
 type Event struct {
 	Site string `json:"site"`
+	Date string `json:"date"`
 }
 
 type Response struct {
@@ -58,13 +59,17 @@ func getSqsApi() SqsApi {
 	}
 }
 
-func isOfferFromToday(offerDate string) bool {
-	current := time.Now()
+func isOfferDateRelevant(offerDate string, requestedDate string) bool {
+	if requestedDate == "" {
+		current := time.Now()
 
-	currentDay := strconv.Itoa(current.Day())
-	currentMonthShort := current.Month().String()[:3]
+		currentDay := strconv.Itoa(current.Day())
+		currentMonthShort := current.Month().String()[:3]
 
-	return strings.Contains(offerDate, currentMonthShort+" "+currentDay)
+		return strings.Contains(offerDate, currentMonthShort+" "+currentDay)
+	}
+
+	return strings.Contains(offerDate, requestedDate)
 }
 
 func HandleChecker(event Event) (Response, error) {
@@ -73,7 +78,7 @@ func HandleChecker(event Event) (Response, error) {
 	offers := make([]Offer, 0)
 
 	c.OnHTML("td.table-col-1", func(e *colly.HTMLElement) {
-		if !isOfferFromToday(e.ChildText("span.table--advanced-search__date")) {
+		if !isOfferDateRelevant(e.ChildText("span.table--advanced-search__date"), event.Date) {
 			return
 		}
 
@@ -92,14 +97,20 @@ func HandleChecker(event Event) (Response, error) {
 
 	err := c.Visit(event.Site)
 
-	if err == nil {
-		smInput := &sqs.SendMessageInput{
-			MessageBody: aws.String("Hello there"),
-			QueueUrl:    &sqsApi.QueueUrl,
-		}
-		_, err_ := sqsApi.Client.SendMessage(context.TODO(), smInput)
-		if err_ != nil {
-			panic("error while sending message, " + err_.Error())
+	if err == nil && sqsApi.Client != nil {
+		for _, o := range offers {
+			data, _ := json.Marshal(o)
+			s := string(data)
+
+			smInput := &sqs.SendMessageInput{
+				MessageBody: &s,
+				QueueUrl:    &sqsApi.QueueUrl,
+			}
+
+			_, err_ := sqsApi.Client.SendMessage(context.TODO(), smInput)
+			if err_ != nil {
+				panic("error while sending message, " + err_.Error())
+			}
 		}
 	}
 
