@@ -56,6 +56,20 @@ Resources:
         - "arn:aws:iam::aws:policy/AWSLambdaExecute"
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSLambdaExecute"
 
   CheckerLambda:
     Type: AWS::Lambda::Function
@@ -92,3 +106,34 @@ Resources:
 
   EventQueue:
     Type: AWS::SQS::Queue
+
+  ScheduleGroup:
+    Type: AWS::Scheduler::ScheduleGroup
+    Properties:
+      Name: internship-finder
+
+  CheckerSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      GroupName: !Ref ScheduleGroup
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: cron(0 0/8 ? * * *)
+      Target:
+        Arn: !GetAtt CheckerLambda.Arn
+        Input: |
+          {
+            "site": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
+            "date": "Feb 16"
+          }
+        RoleArn: !GetAtt SchedulerRole.Arn
+  NotifierSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      GroupName: !Ref ScheduleGroup
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      ScheduleExpression: cron(0 9 ? * * *)
+      Target:
+        Arn: !GetAtt NotifierLambda.Arn
+        RoleArn: !GetAtt SchedulerRole.Arn
