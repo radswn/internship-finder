@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/joho/godotenv"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,54 +56,73 @@ func getSqsApi() SqsApi {
 
 func HandleNotifier() (Response, error) {
 	offers := make([]Offer, 0)
-	telegramApi := "https://api.telegram.org/bot" + os.Getenv("BotToken") + "/sendMessage"
 
 	for {
-		messageOutput, err := sqsApi.Client.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
-			QueueUrl:            &sqsApi.QueueUrl,
-			MaxNumberOfMessages: 1,
-			WaitTimeSeconds:     3,
-		})
-		if err != nil {
-			panic("error while retrieving message, " + err.Error())
-		}
+		offer, receiptHandle := parseSQSMessage()
+		offers = append(offers, offer)
 
-		if len(messageOutput.Messages) == 0 {
+		if receiptHandle == nil {
 			break
 		}
 
-		message := messageOutput.Messages[0]
-		body := *message.Body
-		receiptHandle := message.ReceiptHandle
-
-		var offer Offer
-		json.Unmarshal([]byte(body), &offer)
-
-		offers = append(offers, offer)
-
-		_, err = sqsApi.Client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
-			QueueUrl:      &sqsApi.QueueUrl,
-			ReceiptHandle: receiptHandle,
-		})
-
-		if err != nil {
-			panic("error while deleting message, " + err.Error())
-		}
-
-		_, err = http.PostForm(
-			telegramApi,
-			url.Values{
-				"chat_id": {os.Getenv("ChatID")},
-				"text":    {fmt.Sprintf("%s\n%s\n\n%s", offer.Title, offer.Location, offer.Link)},
-			})
-
-		if err != nil {
-			log.Printf("error when posting text to the chat: %s", err.Error())
-			return Response{}, err
-		}
+		deleteSQSMessage(receiptHandle)
+		postMessageToTelegram(offer)
 	}
 
 	return Response{Offers: offers}, nil
+}
+
+func parseSQSMessage() (Offer, *string) {
+	messageOutput, err := sqsApi.Client.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
+		QueueUrl:            &sqsApi.QueueUrl,
+		MaxNumberOfMessages: 1,
+		WaitTimeSeconds:     2,
+	})
+	if err != nil {
+		panic("error while retrieving message, " + err.Error())
+	}
+
+	if len(messageOutput.Messages) == 0 {
+		return Offer{}, nil
+	}
+
+	message := messageOutput.Messages[0]
+	body := *message.Body
+	receiptHandle := message.ReceiptHandle
+
+	var offer Offer
+	err = json.Unmarshal([]byte(body), &offer)
+	if err != nil {
+		panic("error while unmarshalling message, " + err.Error())
+	}
+
+	return offer, receiptHandle
+}
+
+func deleteSQSMessage(receiptHandle *string) {
+	_, err := sqsApi.Client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
+		QueueUrl:      &sqsApi.QueueUrl,
+		ReceiptHandle: receiptHandle,
+	})
+
+	if err != nil {
+		panic("error while deleting message, " + err.Error())
+	}
+}
+
+func postMessageToTelegram(o Offer) {
+	telegramApi := "https://api.telegram.org/bot" + os.Getenv("BotToken") + "/sendMessage"
+
+	_, err := http.PostForm(
+		telegramApi,
+		url.Values{
+			"chat_id": {os.Getenv("ChatID")},
+			"text":    {fmt.Sprintf("%s\n%s\n\n%s", o.Title, o.Location, o.Link)},
+		})
+
+	if err != nil {
+		panic("error when posting text to the chat" + err.Error())
+	}
 }
 
 func main() {
