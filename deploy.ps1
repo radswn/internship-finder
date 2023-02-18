@@ -57,6 +57,14 @@ ConvertFrom-Json).Versions | Where-Object -Property Key -EQ $CheckerLambdaZip)[0
 $NotifierFileVersion = ((aws s3api list-object-versions --bucket $BucketName | `
 ConvertFrom-Json).Versions | Where-Object -Property Key -EQ $NotifierLambdaZip)[0].VersionId
 
+Get-Content .env | ForEach-Object {
+    $Name, $Value = $_.split('=')
+    Set-Content env:\$Name $Value
+}
+
+$BotToken = Get-Content env:\BotToken
+$ChatID = Get-Content env:\ChatID
+
 aws cloudformation deploy --stack-name lambda-stack `
 --template-file .\infra.yaml `
 --capabilities CAPABILITY_NAMED_IAM `
@@ -64,4 +72,6 @@ aws cloudformation deploy --stack-name lambda-stack `
 CheckerLambdaCodeVersion=$CheckerFileVersion `
 CheckerLambdaZip=$CheckerLambdaZip `
 NotifierLambdaCodeVersion=$NotifierFileVersion `
-NotifierLambdaZip=$NotifierLambdaZip
+NotifierLambdaZip=$NotifierLambdaZip `
+BotToken=$BotToken `
+ChatID=$ChatID

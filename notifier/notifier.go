@@ -3,19 +3,20 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/joho/godotenv"
+	"log"
+	"net/http"
+	"net/url"
 	"os"
 )
 
 type SqsApi struct {
 	Client   *sqs.Client
 	QueueUrl string
-}
-
-type NotificationEvent struct {
-	Input string `json:"input"`
 }
 
 type Response struct {
@@ -54,8 +55,9 @@ func getSqsApi() SqsApi {
 	}
 }
 
-func HandleNotifier(event NotificationEvent) (Response, error) {
+func HandleNotifier() (Response, error) {
 	offers := make([]Offer, 0)
+	telegramApi := "https://api.telegram.org/bot" + os.Getenv("BotToken") + "/sendMessage"
 
 	for {
 		messageOutput, err := sqsApi.Client.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
@@ -88,12 +90,28 @@ func HandleNotifier(event NotificationEvent) (Response, error) {
 		if err != nil {
 			panic("error while deleting message, " + err.Error())
 		}
+
+		_, err = http.PostForm(
+			telegramApi,
+			url.Values{
+				"chat_id": {os.Getenv("ChatID")},
+				"text":    {fmt.Sprintf("%s\n%s\n\n%s", offer.Title, offer.Location, offer.Link)},
+			})
+
+		if err != nil {
+			log.Printf("error when posting text to the chat: %s", err.Error())
+			return Response{}, err
+		}
 	}
 
 	return Response{Offers: offers}, nil
 }
 
 func main() {
+	if len(os.Getenv("BotToken"))*len(os.Getenv("ChatID")) == 0 {
+		godotenv.Load()
+	}
+
 	sqsApi = getSqsApi()
 	lambda.Start(HandleNotifier)
 }

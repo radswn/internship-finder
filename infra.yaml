@@ -16,6 +16,12 @@ Parameters:
   NotifierLambdaZip:
     Type: String
     Description: Name of .zip with notifier lambda code
+  BotToken:
+    Type: String
+    Description: API Token of the Telegram bot
+  ChatID:
+    Type: String
+    Description: ID of the user's (mine) chat
 
 Resources:
   CheckerLambdaRole:
@@ -77,6 +83,8 @@ Resources:
       Environment:
         Variables:
           QueueName: !GetAtt EventQueue.QueueName
+          BotToken: !Ref BotToken
+          ChatID: !Ref ChatID
       Handler: notifier
       Timeout: 10
       Runtime: go1.x
