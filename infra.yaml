@@ -24,7 +24,7 @@ Parameters:
     Description: ID of the user's (mine) chat
 
 Resources:
-  CheckerLambdaRole:
+  LambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -32,49 +32,30 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AWSLambdaExecute"
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-  NotifierLambdaRole:
-    Type: AWS::IAM::Role
+
+  CheckerSchedulePermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AWSLambdaExecute"
-        - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-  SchedulerRole:
-    Type: AWS::IAM::Role
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CheckerLambda.Arn
+      Principal: events.amazonaws.com
+  NotifierSchedulePermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - scheduler.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AWSLambdaExecute"
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt NotifierLambda.Arn
+      Principal: events.amazonaws.com
 
   CheckerLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: Lambda for checking internships on company career sites
+      Description: Lambda for retrieving internships from companies' career sites and sending them to SQS
       Code:
         S3Bucket: !Ref CodeBucketName
         S3Key: !Ref CheckerLambdaZip
@@ -85,7 +66,7 @@ Resources:
       Handler: checker
       Timeout: 10
       Runtime: go1.x
-      Role: !GetAtt CheckerLambdaRole.Arn
+      Role: !GetAtt LambdaRole.Arn
   NotifierLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -102,38 +83,31 @@ Resources:
       Handler: notifier
       Timeout: 10
       Runtime: go1.x
-      Role: !GetAtt NotifierLambdaRole.Arn
+      Role: !GetAtt LambdaRole.Arn
 
   EventQueue:
     Type: AWS::SQS::Queue
 
-  ScheduleGroup:
-    Type: AWS::Scheduler::ScheduleGroup
+  CheckerScheduleRule:
+    Type: AWS::Events::Rule
     Properties:
-      Name: internship-finder
-
-  CheckerSchedule:
-    Type: AWS::Scheduler::Schedule
-    Properties:
-      GroupName: !Ref ScheduleGroup
-      FlexibleTimeWindow:
-        Mode: "OFF"
+      Description: Rule to invoke the checker lambda everyday at 8AM, 4PM and 12PM
       ScheduleExpression: cron(0 0/8 ? * * *)
-      Target:
-        Arn: !GetAtt CheckerLambda.Arn
-        Input: |
-          {
-            "site": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
-            "date": "Feb 16"
-          }
-        RoleArn: !GetAtt SchedulerRole.Arn
-  NotifierSchedule:
-    Type: AWS::Scheduler::Schedule
+      Targets:
+        - Id: checker
+          Arn: !GetAtt CheckerLambda.Arn
+          Input: |
+            {
+              "site": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
+              "date": ""
+            }
+  NotifierScheduleRule:
+    Type: AWS::Events::Rule
     Properties:
-      GroupName: !Ref ScheduleGroup
-      FlexibleTimeWindow:
-        Mode: "OFF"
+      Description: Rule to invoke the notifier lambda everyday at 9AM
       ScheduleExpression: cron(0 9 ? * * *)
-      Target:
-        Arn: !GetAtt NotifierLambda.Arn
-        RoleArn: !GetAtt SchedulerRole.Arn
+      Targets:
+        - Id: notifier
+          Arn: !GetAtt NotifierLambda.Arn
+          Input: |
+            {}
