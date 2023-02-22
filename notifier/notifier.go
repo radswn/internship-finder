@@ -56,17 +56,21 @@ func getSqsApi() SqsApi {
 
 func HandleNotifier() (Response, error) {
 	offers := make([]Offer, 0)
+	postedLinks := map[string]bool{}
 
 	for {
 		offer, receiptHandle := parseSQSMessage()
-		offers = append(offers, offer)
-
 		if receiptHandle == nil {
 			break
 		}
+		offers = append(offers, offer)
 
 		deleteSQSMessage(receiptHandle)
-		postMessageToTelegram(offer)
+
+		if _, present := postedLinks[offer.Link]; !present {
+			postedLinks[offer.Link] = true
+			postMessageToTelegram(offer)
+		}
 	}
 
 	return Response{Offers: offers}, nil
