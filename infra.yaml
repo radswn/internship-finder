@@ -98,7 +98,7 @@ Resources:
           Arn: !GetAtt CheckerLambda.Arn
           Input: |
             {
-              "site": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
+              "appleSite": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
               "date": ""
             }
   NotifierScheduleRule:

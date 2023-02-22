@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-var site = "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN"
+var appleSite = "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN"
 var date = ""
 var offers []Offer
 
 func TestConnection(t *testing.T) {
-	event := Event{site, date}
+	event := Event{appleSite, date}
 	resp, err := HandleChecker(event)
 
 	if err != nil {

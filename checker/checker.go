@@ -19,8 +19,8 @@ type SqsApi struct {
 }
 
 type Event struct {
-	Site string `json:"site"`
-	Date string `json:"date"`
+	AppleSite string `json:"appleSite"`
+	Date      string `json:"date"`
 }
 
 type Response struct {
@@ -73,8 +73,31 @@ func isOfferDateRelevant(offerDate string, requestedDate string) bool {
 }
 
 func HandleChecker(event Event) (Response, error) {
-	c := colly.NewCollector(colly.AllowedDomains("jobs.apple.com"))
+	offers, err := collectAllOffers(event)
 
+	if err == nil && sqsApi.Client != nil {
+		forwardOffersToQueue(&offers)
+	}
+
+	return Response{Offers: offers}, err
+}
+
+func collectAllOffers(event Event) ([]Offer, error) {
+	offers := make([]Offer, 0)
+	var err error
+
+	if event.AppleSite != "" {
+		appleOffers, err := getAppleOffers(event)
+		if err == nil {
+			offers = append(offers, *appleOffers...)
+		}
+	}
+
+	return offers, err
+}
+
+func getAppleOffers(event Event) (*[]Offer, error) {
+	c := colly.NewCollector(colly.AllowedDomains("jobs.apple.com"))
 	offers := make([]Offer, 0)
 
 	c.OnHTML("td.table-col-1", func(e *colly.HTMLElement) {
@@ -83,7 +106,7 @@ func HandleChecker(event Event) (Response, error) {
 		}
 
 		title := e.ChildText("a")
-		link := constructLink(event.Site, e.ChildAttr("a", "href"))
+		link := constructLink(event.AppleSite, e.ChildAttr("a", "href"))
 		location := e.DOM.SiblingsFiltered("td.table-col-2").Text()
 
 		offer := Offer{
@@ -94,33 +117,32 @@ func HandleChecker(event Event) (Response, error) {
 
 		offers = append(offers, offer)
 	})
+	err := c.Visit(event.AppleSite)
 
-	err := c.Visit(event.Site)
-
-	if err == nil && sqsApi.Client != nil {
-		for _, o := range offers {
-			data, _ := json.Marshal(o)
-			s := string(data)
-
-			smInput := &sqs.SendMessageInput{
-				MessageBody: &s,
-				QueueUrl:    &sqsApi.QueueUrl,
-			}
-
-			_, err_ := sqsApi.Client.SendMessage(context.TODO(), smInput)
-			if err_ != nil {
-				panic("error while sending message, " + err_.Error())
-			}
-		}
-	}
-
-	return Response{Offers: offers}, err
+	return &offers, err
 }
 
 func constructLink(visitedUrl string, href string) (url string) {
 	baseUrlEndIdx := strings.Index(visitedUrl, ".com") + 4
 	baseUrl := visitedUrl[:baseUrlEndIdx]
 	return baseUrl + href
+}
+
+func forwardOffersToQueue(offers *[]Offer) {
+	for _, o := range *offers {
+		data, _ := json.Marshal(o)
+		s := string(data)
+
+		smInput := &sqs.SendMessageInput{
+			MessageBody: &s,
+			QueueUrl:    &sqsApi.QueueUrl,
+		}
+
+		_, err_ := sqsApi.Client.SendMessage(context.TODO(), smInput)
+		if err_ != nil {
+			panic("error while sending message, " + err_.Error())
+		}
+	}
 }
 
 func main() {
