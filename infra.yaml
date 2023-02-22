@@ -91,8 +91,8 @@ Resources:
   CheckerScheduleRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Rule to invoke the checker lambda everyday at 8AM, 4PM and 12PM
-      ScheduleExpression: cron(0 0/8 ? * * *)
+      Description: Rule to invoke the checker lambda everyday at 11PM
+      ScheduleExpression: cron(0 22 ? * * *)
       Targets:
         - Id: checker
           Arn: !GetAtt CheckerLambda.Arn
@@ -105,8 +105,8 @@ Resources:
   NotifierScheduleRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Rule to invoke the notifier lambda everyday at 9AM
-      ScheduleExpression: cron(0 9 ? * * *)
+      Description: Rule to invoke the notifier lambda every Wednesday and Sunday at 9AM
+      ScheduleExpression: cron(0 8 ? * SUN,WED *)
       Targets:
         - Id: notifier
           Arn: !GetAtt NotifierLambda.Arn
